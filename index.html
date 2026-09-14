@@ -39,6 +39,7 @@ body{
   border-bottom:4px solid var(--blood);
   background:linear-gradient(180deg, rgba(0,0,0,0.35), transparent);
 }
+.header-inner{max-width:760px; margin:0 auto;}
 .wordmark{
   font-family:'Anton', sans-serif;
   font-size:clamp(26px,5vw,44px);
@@ -86,7 +87,10 @@ body{
 .tabs{
   display:flex;
   gap:2px;
-  padding:14px 20px 0;
+  width:calc(100% - 40px);
+  max-width:760px;
+  margin:0 auto;
+  padding:14px 0 0;
   flex-wrap:wrap;
 }
 .tab-btn{
@@ -291,29 +295,31 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
 <body>
 
 <div class="app-header">
-  <h1 class="wordmark">DCC <span>CHARACTER SHEET</span></h1>
-  <div class="subtag">CRAWLER CHARACTER RECORD</div>
-  <div class="toolbar no-print">
-    <button id="btnExport">Export backup</button>
-    <button id="btnImport">Import backup</button>
-    <input type="file" id="importFile" accept="application/json">
-    <button id="btnPrint">Print sheet</button>
-    <button id="btnReset" class="danger">Reset sheet</button>
-    <label class="toggle-wrap">
-      <span class="toggle-switch">
-        <input type="checkbox" id="floor3Toggle">
-        <span class="toggle-slider"></span>
-      </span>
-      Floor 3+
-    </label>
-    <select id="charSelect" class="char-select">
-      <option value="">No character selected</option>
-      <option value="ben">Ben</option>
-      <option value="los">Los</option>
-      <option value="matt">Matt</option>
-      <option value="jacob">Jacob</option>
-    </select>
-    <span class="save-indicator" id="saveIndicator">SAVED</span>
+  <div class="header-inner">
+    <h1 class="wordmark">DCC <span>CHARACTER SHEET</span></h1>
+    <div class="subtag">CRAWLER CHARACTER RECORD</div>
+    <div class="toolbar no-print">
+      <button id="btnExport">Export backup</button>
+      <button id="btnImport">Import backup</button>
+      <input type="file" id="importFile" accept="application/json">
+      <button id="btnPrint">Print sheet</button>
+      <button id="btnReset" class="danger">Reset sheet</button>
+      <label class="toggle-wrap">
+        <span class="toggle-switch">
+          <input type="checkbox" id="floor3Toggle">
+          <span class="toggle-slider"></span>
+        </span>
+        Floor 3+
+      </label>
+      <select id="charSelect" class="char-select">
+        <option value="">No character selected</option>
+        <option value="ben">Ben</option>
+        <option value="los">Los</option>
+        <option value="matt">Matt</option>
+        <option value="jacob">Jacob</option>
+      </select>
+      <span class="save-indicator" id="saveIndicator">SAVED</span>
+    </div>
   </div>
 </div>
 
