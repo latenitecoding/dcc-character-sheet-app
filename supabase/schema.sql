@@ -43,5 +43,10 @@ create policy "anon can update characters"
   using (true)
   with check (true);
 
+create policy "anon can delete characters"
+  on characters for delete
+  to anon
+  using (true);
+
 -- Enable realtime so all players see updates live.
 alter publication supabase_realtime add table characters;
