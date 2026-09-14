@@ -74,6 +74,8 @@ body{
 .toggle-slider::before{content:""; position:absolute; width:14px; height:14px; left:3px; top:3px; background:var(--paper); border-radius:50%; transition:transform .15s;}
 .toggle-switch input:checked ~ .toggle-slider{background:var(--blood);}
 .toggle-switch input:checked ~ .toggle-slider::before{transform:translateX(18px);}
+.sheet .toggle-wrap{color:var(--ink);}
+.sheet .toggle-slider{background:rgba(22,20,18,0.2);}
 .char-select{
   font-family:'Oswald',sans-serif; font-size:12px; letter-spacing:1px;
   background:transparent; color:var(--paper); border:1.5px solid rgba(243,240,232,0.35);
@@ -457,7 +459,7 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
     <span class="tip-item" tabindex="0">Look for Clues<span class="tip-bubble">In a Boss encounter, gain information about a foe or environment. This is also a Make a Check type Action.</span></span>
   </div>
 
-  <div class="band" style="margin-top:22px;">ATTACKS</div>
+  <div class="band" style="margin-top:22px;">ATTACKS/SPELLS</div>
   <table class="data-table" id="attacksTable">
     <thead>
       <tr>
@@ -489,7 +491,16 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
     </thead>
     <tbody></tbody>
   </table>
-  <button type="button" class="add-row-btn no-print" id="btnAddSkill">Add Skill</button>
+  <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+    <button type="button" class="add-row-btn no-print" id="btnAddSkill">Add Skill</button>
+    <label class="toggle-wrap no-print">
+      <span class="toggle-switch">
+        <input type="checkbox" id="hideSkillsToggle">
+        <span class="toggle-slider"></span>
+      </span>
+      Hide
+    </label>
+  </div>
 
   <div class="band" style="margin-top:20px;">SKILL RANK DAMAGE</div>
   <div class="field-label" style="text-align:center; margin-bottom:8px;">Rank damage die is based on your current Rank in the Skill</div>
@@ -818,7 +829,8 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
       clubs: makeArray(6, function(){return "";}),
       deity:"",
       openTabs: ["t1"],
-      floor3Plus: false
+      floor3Plus: false,
+      hideFlaggedSkills: false
     };
   }
 
@@ -2483,9 +2495,21 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
       tr.querySelector(".f-name").addEventListener("input", function(e){ row.name = e.target.value; scheduleSave(); });
       tr.querySelector(".f-rank").addEventListener("input", function(e){ row.rank = e.target.value; scheduleSave(); });
       tr.querySelector(".f-checktype").addEventListener("input", function(e){ row.checkType = e.target.value; scheduleSave(); });
-      tr.querySelector(".f-notes").addEventListener("input", function(e){ row.notes = e.target.value; scheduleSave(); });
+      tr.querySelector(".f-notes").addEventListener("input", function(e){ row.notes = e.target.value; scheduleSave(); applySkillHideFilter(); });
       tr.querySelector(".f-checked").addEventListener("change", function(e){ row.checked = e.target.checked; scheduleSave(); });
       setupModSelect(tr, row, ".f-statsel", ".f-statout", "statKey", "statMod");
+    });
+    applySkillHideFilter();
+  }
+
+  function applySkillHideFilter(){
+    var toggle = document.getElementById("hideSkillsToggle");
+    var hideOn = !!(toggle && toggle.checked);
+    var rows = document.querySelectorAll("#skillsTable tbody tr");
+    rows.forEach(function(tr, i){
+      var row = state.skills[i];
+      var flagged = !!(row && typeof row.notes === "string" && /\bhide\b/i.test(row.notes));
+      tr.style.display = (hideOn && flagged) ? "none" : "";
     });
   }
 
@@ -2549,6 +2573,9 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
     recomputeDR();
     var floorToggle = document.getElementById("floor3Toggle");
     if(floorToggle) floorToggle.checked = !!state.floor3Plus;
+    var hideSkillsToggle = document.getElementById("hideSkillsToggle");
+    if(hideSkillsToggle) hideSkillsToggle.checked = !!state.hideFlaggedSkills;
+    applySkillHideFilter();
     renderTabs();
     showActivePanel();
   }
@@ -2630,6 +2657,12 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
       scheduleSave();
       renderTabs();
       showActivePanel();
+    });
+
+    document.getElementById("hideSkillsToggle").addEventListener("change", function(e){
+      state.hideFlaggedSkills = e.target.checked;
+      scheduleSave();
+      applySkillHideFilter();
     });
 
     document.getElementById("btnReset").addEventListener("click", function(){
