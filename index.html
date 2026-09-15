@@ -1708,13 +1708,6 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
     if(PRESETS && slot && PRESETS[slot]){
       base = deepMergeStatic(base, PRESETS[slot]);
     }
-    // Mark as already migrated so the legacy one-time shims in loadState() (which assume
-    // pre-existing save files) never re-fire against our freshly-seeded preset data.
-    // Without this, the Mana shim in particular will copy Max Mana into Extra Mana on
-    // every subsequent load, inflating Max Mana each time.
-    base._wearStartFullMigrated = true;
-    base._maxManaFormulaMigrated = true;
-    base._petMountWearFullMigrated = true;
     return base;
   }
 
@@ -1895,25 +1888,6 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
             if(typeof parsed.debuffs === "string"){
               parsed.debuffs = parsed.debuffs ? [parsed.debuffs] : [];
             }
-            if(!parsed._wearStartFullMigrated){
-              parsed.wear = makeArray(10, function(){return 1;});
-              parsed._wearStartFullMigrated = true;
-            }
-            if(!parsed._maxManaFormulaMigrated){
-              if(!parsed.stats) parsed.stats = {};
-              if(!parsed.stats.int) parsed.stats.int = {};
-              if(!parsed.stats.int.extraMana){
-                parsed.stats.int.extraMana = (parsed.mana && parsed.mana.max) ? parsed.mana.max : "";
-              }
-              parsed._maxManaFormulaMigrated = true;
-            }
-            if(!parsed._petMountWearFullMigrated){
-              if(!parsed.pet) parsed.pet = {};
-              if(!parsed.mount) parsed.mount = {};
-              parsed.pet.wear = makeArray(10, function(){return 1;});
-              parsed.mount.wear = makeArray(10, function(){return 1;});
-              parsed._petMountWearFullMigrated = true;
-            }
             if(parsed.personalSpace && parsed.personalSpace.lines && !parsed.personalSpace.upgradeTables){
               parsed.personalSpace.upgradeTables = parsed.personalSpace.lines.slice(0, 6);
             }
@@ -1925,9 +1899,6 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
               next.openTabs = parsed.openTabs.filter(function(id){ return typeof id === "string"; });
             }
             if(next.openTabs.indexOf("t1") === -1) next.openTabs.unshift("t1");
-            next._wearStartFullMigrated = true;
-            next._maxManaFormulaMigrated = true;
-            next._petMountWearFullMigrated = true;
           }catch(e){ next = presetOrDefault(requestedSlot); }
         }
         if(!next.portrait && DEFAULT_PORTRAITS[requestedSlot]){
@@ -2718,14 +2689,6 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
             state.openTabs = parsed.openTabs.filter(function(id){ return typeof id === "string"; });
           }
           if(state.openTabs.indexOf("t1") === -1) state.openTabs.unshift("t1");
-          // Mark as already migrated, same as presetOrDefault() does for a fresh
-          // character. Without this, the one-time legacy shims in loadState()
-          // (which assume an old pre-migration save) fire on the very next load
-          // of this imported sheet and forcibly reset wear/mana/pet/mount fields
-          // back to their defaults.
-          state._wearStartFullMigrated = true;
-          state._maxManaFormulaMigrated = true;
-          state._petMountWearFullMigrated = true;
           activeTabId = "t1";
           renderAll();
           saveNow();
