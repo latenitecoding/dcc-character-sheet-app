@@ -64,6 +64,8 @@ body{
   padding:8px 14px; border-radius:3px; cursor:pointer; transition:background 0.15s, border-color 0.15s;
 }
 .toolbar button:hover{background:rgba(243,240,232,0.08); border-color:var(--paper);}
+.toolbar button:disabled{opacity:0.45; cursor:default;}
+.toolbar button:disabled:hover{background:transparent; border-color:rgba(243,240,232,0.35);}
 .toolbar button.danger:hover{background:rgba(200,39,44,0.25); border-color:var(--blood);}
 .save-indicator{font-family:'Oswald',sans-serif; font-size:11px; color:#9a948a; margin-left:auto; letter-spacing:1px; opacity:0; transition:opacity 0.3s;}
 .save-indicator.show{opacity:1;}
@@ -303,7 +305,7 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
       <button id="btnImport">Import backup</button>
       <input type="file" id="importFile" accept="application/json">
       <button id="btnPrint">Print sheet</button>
-      <button id="btnReset" class="danger">Reset sheet</button>
+      <button id="btnReset" disabled>Thanks Matt!</button>
       <label class="toggle-wrap">
         <span class="toggle-switch">
           <input type="checkbox" id="floor3Toggle">
@@ -2669,15 +2671,6 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
       state.hideFlaggedSkills = e.target.checked;
       scheduleSave();
       applySkillHideFilter();
-    });
-
-    document.getElementById("btnReset").addEventListener("click", function(){
-      if(confirm("This will erase every field on the currently selected character. This cannot be undone. Continue?")){
-        state = defaultState();
-        activeTabId = "t1";
-        renderAll();
-        saveNow();
-      }
     });
 
     document.getElementById("btnExport").addEventListener("click", function(){
