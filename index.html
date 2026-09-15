@@ -2718,6 +2718,14 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
             state.openTabs = parsed.openTabs.filter(function(id){ return typeof id === "string"; });
           }
           if(state.openTabs.indexOf("t1") === -1) state.openTabs.unshift("t1");
+          // Mark as already migrated, same as presetOrDefault() does for a fresh
+          // character. Without this, the one-time legacy shims in loadState()
+          // (which assume an old pre-migration save) fire on the very next load
+          // of this imported sheet and forcibly reset wear/mana/pet/mount fields
+          // back to their defaults.
+          state._wearStartFullMigrated = true;
+          state._maxManaFormulaMigrated = true;
+          state._petMountWearFullMigrated = true;
           activeTabId = "t1";
           renderAll();
           saveNow();
