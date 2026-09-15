@@ -785,6 +785,7 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
   };
   function slotStorageKey(){ return STORAGE_PREFIX + (currentSlot || "none"); }
   var saveTimer = null;
+  var pendingSave = false; // true from the moment an edit is made until its save actually goes out
 
   function makeArray(n, factory){ var a=[]; for(var i=0;i<n;i++){ a.push(factory(i)); } return a; }
 
@@ -1814,17 +1815,21 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
   // Shared storage adapter: the actual character sheet data lives in
   // Supabase so every player sees the same data, with realtime push so
   // everyone's view updates live when someone else edits their sheet.
+  // There is deliberately no localStorage fallback here: if Supabase is
+  // unavailable, saves/loads should visibly fail rather than silently
+  // drift into a per-browser copy that looks fine locally but isn't shared.
   var SUPABASE_URL = "https://upvwkkxcbdsaufwyzpyw.supabase.co";
   var SUPABASE_ANON_KEY = "sb_publishable_4Yj1A_1Smcesu9LsYdLqxw_rUvwE0Ws";
-  var supabaseClient = (SUPABASE_URL.indexOf("YOUR_SUPABASE") === 0)
-    ? null
-    : window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  var lastWrittenValue = {}; // key -> value, so our own writes don't trigger a redundant reload
+  var supabaseClient = null;
+  try{
+    if(SUPABASE_URL.indexOf("YOUR_SUPABASE") !== 0){
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+  }catch(e){ supabaseClient = null; }
 
   var remoteDB = {
     set: function(key, value){
-      if(!supabaseClient) return localDB.set(key, value);
-      lastWrittenValue[key] = value;
+      if(!supabaseClient) return Promise.reject(new Error("Supabase unavailable"));
       return supabaseClient.from("characters")
         .upsert({ id: key, value: value })
         .then(function(res){
@@ -1833,7 +1838,7 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
         });
     },
     get: function(key){
-      if(!supabaseClient) return localDB.get(key);
+      if(!supabaseClient) return Promise.reject(new Error("Supabase unavailable"));
       return supabaseClient.from("characters")
         .select("value")
         .eq("id", key)
@@ -1846,7 +1851,10 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
   };
 
   // Live-updates: when another player's browser saves a change to the
-  // character we're currently viewing, reload it here too.
+  // character we're currently viewing, reload it here too. Skipped when
+  // it's just an echo of our own last save, or when we have unsaved local
+  // edits about to go out (so we don't clobber in-progress typing with a
+  // slightly-older snapshot from before those edits).
   var realtimeChannel = null;
   function subscribeRemote(key){
     if(!supabaseClient) return;
@@ -1859,14 +1867,16 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
         function(payload){
           var newValue = payload.new && payload.new.value;
           if(newValue == null) return;
-          if(newValue === lastWrittenValue[key]) return; // our own write echoing back
+          if(newValue === JSON.stringify(state)) return; // already in sync
+          if(pendingSave) return; // unsaved local edits queued; our save will follow shortly
           loadState(renderAll);
         })
       .subscribe();
   }
 
-  function scheduleSave(){ clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 500); }
+  function scheduleSave(){ pendingSave = true; clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 500); }
   function saveNow(){
+    pendingSave = false;
     try{
       remoteDB.set(slotStorageKey(), JSON.stringify(state)).then(function(res){
         if(res){ showSaveIndicator("SAVED"); } else { showSaveIndicator("SAVE FAILED"); }
@@ -1874,9 +1884,11 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
     }catch(e){ showSaveIndicator("SAVE FAILED"); }
   }
   function loadState(callback){
-    state = presetOrDefault(currentSlot);
+    var requestedSlot = currentSlot;
     try{
       remoteDB.get(slotStorageKey()).then(function(res){
+        if(currentSlot !== requestedSlot) return; // switched characters while this was in flight
+        var next = presetOrDefault(requestedSlot);
         if(res && res.value){
           try{
             var parsed = JSON.parse(res.value);
@@ -1908,21 +1920,28 @@ footer.legal{text-align:center; font-size:11px; color:#6b665d; font-family:'Oswa
             if(parsed.personalSpace && typeof parsed.personalSpace.amenities === "string" && !parsed.personalSpace.amenitiesList){
               parsed.personalSpace.amenitiesList = parsed.personalSpace.amenities ? [parsed.personalSpace.amenities] : [];
             }
-            state = deepMerge(presetOrDefault(currentSlot), parsed);
+            next = deepMerge(presetOrDefault(requestedSlot), parsed);
             if(Array.isArray(parsed.openTabs)){
-              state.openTabs = parsed.openTabs.filter(function(id){ return typeof id === "string"; });
+              next.openTabs = parsed.openTabs.filter(function(id){ return typeof id === "string"; });
             }
-            if(state.openTabs.indexOf("t1") === -1) state.openTabs.unshift("t1");
-            state._wearStartFullMigrated = true;
-            state._maxManaFormulaMigrated = true;
-            state._petMountWearFullMigrated = true;
-          }catch(e){ state = presetOrDefault(currentSlot); }
+            if(next.openTabs.indexOf("t1") === -1) next.openTabs.unshift("t1");
+            next._wearStartFullMigrated = true;
+            next._maxManaFormulaMigrated = true;
+            next._petMountWearFullMigrated = true;
+          }catch(e){ next = presetOrDefault(requestedSlot); }
         }
-        if(!state.portrait && DEFAULT_PORTRAITS[currentSlot]){
-          state.portrait = DEFAULT_PORTRAITS[currentSlot];
+        if(!next.portrait && DEFAULT_PORTRAITS[requestedSlot]){
+          next.portrait = DEFAULT_PORTRAITS[requestedSlot];
         }
+        state = next;
         callback();
-      }).catch(function(){ callback(); });
+      }).catch(function(){
+        // Network hiccup or Supabase unavailable: keep whatever is already
+        // in memory instead of blanking the sheet (and risking that blank
+        // state getting saved over the real data on the next edit).
+        showSaveIndicator("SYNC FAILED");
+        callback();
+      });
     }catch(e){ callback(); }
   }
 
